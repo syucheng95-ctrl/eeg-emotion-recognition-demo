@@ -1,22 +1,27 @@
-# EEG Emotion Recognition Demo
+# 脑电情绪识别项目代码与实验整理
 
-This repository contains the code, experiment scripts, and written analysis for an EEG-based emotion recognition project developed for a competition setting.
+本仓库用于整理一个面向比赛场景的脑电情绪识别项目，包括：
 
-The project is not organized as a generic library. It is an experiment-driven research repo. The core question throughout the work is:
+- 核心代码
+- 各阶段实验脚本
+- 分阶段实验分析文本
+- 最终生成的 Word 报告
 
-How can we preserve the stability of trial-level statistical EEG features while introducing dynamic temporal information in a controlled way under subject-level evaluation?
+这个仓库不是通用算法库，而是一个以实验推进为主的研究型代码仓库。项目的核心问题始终是：
 
-## Current Conclusion
+在当前比赛数据规模、被试级评估协议和群体混杂背景下，如何在保留 trial 级统计特征稳定性的前提下，以受约束的方式引入时序动态信息，从而得到更稳健的跨被试情绪识别模型。
 
-Under the current dataset and evaluation protocol, the most reliable method family is a lightweight dual-branch architecture:
+## 当前主线结论
 
-- statistical branch as the main trunk
-- GRU temporal branch as dynamic supplement
-- `seq_gate` for one-way stat-to-sequence interaction
-- vector gated fusion for branch fusion
-- light multitask group supervision with `group_loss_weight=0.02`
+在当前数据与评估协议下，项目最终收束出的正式方法主线是一个轻量双分支模型：
 
-The finalized structural configuration is:
+- 统计分支作为稳定主干
+- GRU 时序分支作为动态补充
+- `seq_gate` 用于统计到时序的单向条件交互
+- vector gated fusion 用于两分支融合
+- 轻度群体多任务监督，`group_loss_weight = 0.02`
+
+正式结构配置如下：
 
 - `stat_hidden_channels = 96`
 - `stat_num_layers = 2`
@@ -29,7 +34,7 @@ The finalized structural configuration is:
 - `dropout = 0.3`
 - `standardize_sequence_input = True`
 
-The best training recipe found in the latest sweep is:
+在固定正式架构不变的前提下，最新训练策略搜索得到的最佳训练配方为：
 
 - `lr = 1e-3`
 - `batch_size = 64`
@@ -37,100 +42,131 @@ The best training recipe found in the latest sweep is:
 - `early_stopping_patience = 15`
 - `epochs = 200`
 
-With that recipe, the current best single-model hold-out result is:
+当前最佳单模型结果为：
 
 - `hold-out emotion accuracy = 0.78125`
 
-## Repository Layout
+## 仓库结构
 
-- `eeg_pipeline/`: model definitions, feature extraction, preprocessing, normalization, and dataset utilities
-- `scripts/`: runnable training, evaluation, benchmark, and utility entrypoints
-- `实验分析/`: stage-by-stage experiment writeups in Chinese
-- `上下文/`: internal planning and direction notes
-- `output/doc/`: generated Word reports
-- `README_pipeline.md`: short command-oriented pipeline note
+- `eeg_pipeline/`
+  核心模型、特征提取、预处理、归一化和数据相关模块
 
-## What Is Included
+- `scripts/`
+  训练、预测、批量 benchmark、实验 runner 等可执行脚本
 
-This repo is intended to include:
+- `实验分析/`
+  各阶段实验分析文本，按阶段记录“做了什么、为什么做、结果怎样、结论是什么”
 
-- source code
-- experiment scripts
-- textual analysis and stage summaries
-- generated lightweight documentation
+- `output/doc/`
+  已生成的 Word 报告
 
-This repo is intentionally configured to exclude:
+- `README_pipeline.md`
+  一个更偏命令说明的简版流程说明
 
-- raw competition dataset
-- generated feature caches
-- model checkpoints
-- large experiment outputs
-- temporary files
+## 仓库中包含什么
 
-Those paths are ignored via `.gitignore`.
+本仓库公开保留的内容主要有：
 
-## Environment
+- 代码
+- 脚本
+- 实验分析文本
+- 生成好的文档报告
 
-The project has been run in the local conda environment named `pytorch`.
+本仓库刻意不包含以下内容：
 
-Typical command pattern:
+- 原始比赛数据
+- 特征缓存
+- 训练权重
+- 大体积实验输出
+- 临时文件
+
+这些内容已经通过 `.gitignore` 排除。
+
+## 环境说明
+
+本项目主要在本地 conda 环境 `pytorch` 中运行。
+
+常见运行方式如下：
 
 ```powershell
 C:\Users\Sunyucheng\anaconda3\envs\pytorch\python.exe scripts\train_multitask_dual_branch.py
 ```
 
-Or, if `conda run` works correctly on your machine:
+如果你本机的 `conda run` 工作正常，也可以写成：
 
 ```powershell
-conda run -n pytorch python scripts/train_multitask_dual_branch.py
+conda run -n pytorch python scripts\train_multitask_dual_branch.py
 ```
 
-## Main Entry Points
+## 常用脚本入口
 
-Core scripts:
+核心脚本包括：
 
-- `scripts/prepare_features.py`: build trial-level statistical DE features
-- `scripts/prepare_graph_features.py`: build window-level sequence tensors
-- `scripts/train_baseline.py`: traditional ML baseline
-- `scripts/train_multitask_dual_branch.py`: finalized multitask dual-branch training entrypoint
-- `scripts/run_training_strategy_sweep.py`: compact training-only hyperparameter sweep
-- `scripts/run_final_strategy_suite.py`: seed-ensemble evaluation for the finalized mainline
+- `scripts/prepare_features.py`
+  构建 trial 级统计 DE 特征
 
-Additional benchmark runners are listed in [README_pipeline.md](README_pipeline.md) and `scripts/README.md`.
+- `scripts/prepare_graph_features.py`
+  构建窗口级序列张量
 
-## Evaluation Protocol
+- `scripts/train_baseline.py`
+  传统机器学习基线
 
-All main experiments are compared under:
+- `scripts/train_multitask_dual_branch.py`
+  当前正式版多任务双分支模型训练入口
 
-- subject-level `GroupKFold` with 5 folds
-- one fixed hold-out subject split used as a pseudo-private validation set
+- `scripts/run_training_strategy_sweep.py`
+  固定正式架构后，仅对训练超参数做小规模搜索
 
-This is important. Trial-level random splitting is not used for the main conclusions.
+- `scripts/run_final_strategy_suite.py`
+  面向正式版主线的 seed ensemble 评估
 
-## Notes For Public Upload
+更多脚本说明见：
 
-If you upload this repo to GitHub, do not include:
+- `scripts/README.md`
+- `README_pipeline.md`
+
+## 评估协议
+
+项目主要比较结果基于以下统一协议：
+
+- 被试级 `GroupKFold`
+- `5` 折交叉验证
+- 额外固定一组 hold-out subjects 作为伪 private 验证集
+
+这点非常重要。项目主结论不是基于 trial 随机切分得出的，而是基于更严格的被试级划分。
+
+## 上传到 GitHub 时不建议包含的内容
+
+以下目录或文件不建议公开上传：
 
 - `官方数据集/`
 - `artifacts/`
 - `outputs_v2/`
 - `outputs_legacy/`
 - `tmp/`
+- 其他本地缓存、大文件、模型权重
 
-If you need to share results, prefer exporting:
+如果需要展示结果，更建议公开：
 
-- selected JSON/CSV summaries
-- the Word reports under `output/doc/`
-- screenshots or tables in the README / project report
+- 核心代码
+- 分析文本
+- 少量总结性 CSV / JSON
+- Word 报告
+- README 中的结果说明
 
-## Reports
+## 当前报告
 
-Current generated reports:
+当前已生成的报告包括：
 
 - `output/doc/项目全程尝试总结.docx`
 - `output/doc/当前正式模型与最终结果说明.docx`
 
-## Status
+## 当前状态
 
-This repo captures a research workflow that has already converged on a clear mainline. Future work, if any, should focus more on better training protocol, model selection criteria, and documentation quality than on opening many new architecture branches.
+这个仓库记录的是一个已经基本完成主线收束的研究过程。后续如果还要继续做，更值得投入的方向通常不是继续大规模开新结构，而是：
+
+- 更严格的训练流程
+- 更正式的模型选择标准
+- 更好的结果整理与报告表达
+- 在新的数据设定下重新验证当前主线是否仍然成立
 
